@@ -33,18 +33,26 @@ export default function Profile({ user, org, location }: ProfileProps) {
         <ProfilePlaceholder width={40} height={40} />
       </View>
       <View style={{ display: 'flex' }}>
-        <Text style={styles['text']}>
-          <B>{user}</B> at <B>{org}</B>
-        </Text>
-        <Text
-          style={{
-            color: 'grey',
-            fontFamily: 'Poppins_400Regular',
-            fontSize: 11,
-          }}
-        >
-          {location}
-        </Text>
+        {org != '' ? (
+          <Text style={styles['text']}>
+            <B>{user}</B> at <B>{org}</B>{' '}
+          </Text>
+        ) : (
+          <Text style={styles['text']}>
+            <B>{user}</B>
+          </Text>
+        )}
+        {location != '' ? (
+          <Text
+            style={{
+              color: 'grey',
+              fontFamily: 'Poppins_400Regular',
+              fontSize: 11,
+            }}
+          >
+            {location}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -53,7 +61,6 @@ export default function Profile({ user, org, location }: ProfileProps) {
 const styles = StyleSheet.create({
   'profile-header': {
     width: '100%',
-    height: '12%',
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
