@@ -1,67 +1,145 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import CommentsIcon from '../../assets/comments-icon.svg';
-import HeartIcon from '../../assets/heart-icon.svg';
-import ShareIcon from '../../assets/messenger-icon.svg';
-import ProfilePlaceholder from '../../assets/profile-placeholder-icon.svg';
+import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Poppins_400Regular,
+  Poppins_700Bold,
+  useFonts,
+} from '@expo-google-fonts/poppins';
+import supabase from '../../api/supabase/client';
+import { fetchAllRows } from '../../api/supabase/queries/query';
+import Comment from '../components/Comment';
+import Post from '../components/Post';
+
+type CommentType = {
+  username: string;
+  numlikes: number;
+  text: string;
+};
+
+type PostType = {
+  username: string;
+  npo: string;
+  city: string;
+  state: string;
+  text: string;
+  image: string;
+  likeCount: number;
+  comments: CommentType[];
+};
 
 export default function App() {
+  const [postData, setPostData] = useState<PostType[]>([]);
+
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_700Bold,
+  });
+
+  async function fetchPostData(): Promise<PostType[]> {
+    const allPostData = await fetchAllRows();
+    const posts: PostType[] = [];
+
+    for (const data of allPostData) {
+      const { data: cityRow } = await supabase
+        .from('Locations')
+        .select('city_name')
+        .eq('id', data.location_id)
+        .single();
+      const { data: stateRow } = await supabase
+        .from('Locations')
+        .select('state_abbr')
+        .eq('id', data.location_id)
+        .single();
+      const { data: commentRow } = await supabase
+        .from('Comments')
+        .select('*')
+        .eq('post_id', data.id);
+
+      const comments: CommentType[] = (commentRow || []).map(comment => ({
+        username: comment.user_name,
+        numlikes: comment.num_likes,
+        text: comment.comment_text,
+      }));
+
+      posts.push({
+        username: data.user_name ?? '',
+        npo: data.npo_name ?? '',
+        city: cityRow?.city_name ?? '',
+        state: stateRow?.state_abbr ?? '',
+        text: data.post_text ?? '',
+        image: data.image_link ?? '',
+        likeCount: data.num_likes ?? 0,
+        comments,
+      });
+    }
+
+    return posts;
+  }
+
+  useEffect(() => {
+    async function load() {
+      const fetchedPosts = await fetchPostData();
+      setPostData(fetchedPosts);
+    }
+
+    void load();
+  }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <ScrollView>
-          <ProfilePlaceholder width={24} height={24} />
-          <Text>neha32 at Mission Bit</Text>
-          <Text>San Francisco, CA</Text>
-
-          <Text>
-            Image Link:
-            https://cdn.britannica.com/51/178051-050-3B786A55/San-Francisco.jpg
-          </Text>
-
-          <Text>
-            This past weekend, I taught at Mission Bit. I was working with a
-            group of high school students who were building their first web
-            pages. I really enjoyed being able to help guide 10 students on
-            learning CS fundamentals through a project! They were all really
-            eager to learn, and I'm glad I signed up. Highly recommend to any
-            other software engineers interested in volunteering! Sign-up here:
-            https://missionbit.org/get-involved/volunteer-with-us/
-          </Text>
-
-          <Text>3 Likes</Text>
-          <Text>View 2 Comments</Text>
-          <HeartIcon width={24} height={24} />
-          <CommentsIcon width={24} height={24} />
-          <ShareIcon width={24} height={24} />
-
-          <Text>February 1</Text>
-
-          <ProfilePlaceholder width={24} height={24} />
-          <Text>aiden_ugh at Boys and Girls Club</Text>
-          <Text>Oakland, CA</Text>
-          <Text>I recently volunteered at my local Boys and Girls Club!</Text>
-        </ScrollView>
-      </View>
+      <ScrollView style={styles.feed}>
+        {postData.map((post, index) => (
+          <View
+            key={`${post.username}-${post.npo}-${index}`}
+            style={styles.postGroup}
+          >
+            <Post
+              username={post.username}
+              npo={post.npo}
+              city={post.city}
+              state={post.state}
+              text={post.text}
+              image={post.image}
+              likeCount={post.likeCount}
+            />
+            <View style={styles.comments}>
+              {post.comments.map((comment, commentIndex) => (
+                <Comment
+                  key={`${comment.username}-${commentIndex}`}
+                  user={comment.username}
+                  org=""
+                  location=""
+                  likes={comment.numlikes}
+                  comment={comment.text}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    height: '100%',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 0,
-    padding: 0,
-  },
-  content: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
     backgroundColor: '#ffffff',
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: 'black',
+  },
+  feed: {
+    width: '100%',
+  },
+  postGroup: {
+    width: '100%',
+  },
+  comments: {
+    width: '100%',
+    paddingHorizontal: '4%',
+    paddingBottom: 16,
+    backgroundColor: '#ffffff',
   },
 });
